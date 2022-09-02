@@ -13,9 +13,10 @@ class ScreenCreateBlog extends StatelessWidget {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
-  File? imageFile;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  final ValueNotifier<File?> imageFileNotifier = ValueNotifier(null);
 
   BlogModel? blogModel;
 
@@ -27,6 +28,9 @@ class ScreenCreateBlog extends StatelessWidget {
       if (blogModel != null) {
         _titleController.text = blogModel!.title;
         _contentController.text = blogModel!.blogContent;
+        if (blogModel?.image != null) {
+          imageFileNotifier.value = File(blogModel!.image!);
+        }
       }
     });
 
@@ -44,6 +48,8 @@ class ScreenCreateBlog extends StatelessWidget {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                //// Title Add Section ///////////
+
                 TextFormField(
                   controller: _titleController,
                   maxLength: 50,
@@ -61,6 +67,8 @@ class ScreenCreateBlog extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 10),
+
+                ///// Blog Add Selection /////////
                 TextFormField(
                   controller: _contentController,
                   maxLength: 1000,
@@ -79,21 +87,28 @@ class ScreenCreateBlog extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 5),
+
+                ///// Image Add Section ///////////
                 InkWell(
                   child: Card(
                     elevation: 10,
-                    child: SizedBox(
-                      width: MediaQuery.of(context).size.width * .40,
-                      height: MediaQuery.of(context).size.width * .40,
-                      child: imageFile != null
-                          ? Image.file(imageFile!)
-                          : const Icon(Icons.add_photo_alternate_rounded),
+                    child: ValueListenableBuilder(
+                      valueListenable: imageFileNotifier,
+                      builder: (context, File? imageFile, __) {
+                        return SizedBox(
+                          width: MediaQuery.of(context).size.width * .40,
+                          height: MediaQuery.of(context).size.width * .40,
+                          child: imageFile != null
+                              ? Image.file(imageFile)
+                              : const Icon(Icons.add_photo_alternate_rounded),
+                        );
+                      },
                     ),
                   ),
                   onTap: () {
                     showModalBottomSheet(
                         context: context,
-                        builder: (context) {
+                        builder: (ctx) {
                           return ListView(
                             shrinkWrap: true,
                             children: [
@@ -101,17 +116,26 @@ class ScreenCreateBlog extends StatelessWidget {
                                 leading: const Icon(Icons.camera),
                                 title: const Text('Camera'),
                                 onTap: () async {
-                                  // final image = await ImagePicker.platform
-                                  //     .pickImage(source: ImageSource.camera);
-
-                                  //     imageFile = image
+                                  Navigator.pop(ctx);
+                                  final image = await ImagePicker()
+                                      .pickImage(source: ImageSource.camera);
+                                  if (image != null) {
+                                    imageFileNotifier.value = File(image.path);
+                                  }
                                 },
                               ),
                               const Divider(height: 1),
                               ListTile(
                                 leading: const Icon(Icons.photo),
                                 title: const Text('Gallery'),
-                                onTap: () {},
+                                onTap: () async {
+                                  Navigator.pop(ctx);
+                                  final image = await ImagePicker()
+                                      .pickImage(source: ImageSource.gallery);
+                                  if (image != null) {
+                                    imageFileNotifier.value = File(image.path);
+                                  }
+                                },
                               ),
                             ],
                           );
@@ -119,6 +143,8 @@ class ScreenCreateBlog extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 10),
+
+                ////// Post Button//////////////////////
                 MaterialButton(
                   minWidth: double.infinity,
                   onPressed: () {
@@ -126,6 +152,7 @@ class ScreenCreateBlog extends StatelessWidget {
                       id: blogModel?.id,
                       title: _titleController.text.trim(),
                       blogContent: _contentController.text.trim(),
+                      image: imageFileNotifier.value?.path,
                     );
 
                     final formState = _formKey.currentState!;
